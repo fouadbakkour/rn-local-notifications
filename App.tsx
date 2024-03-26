@@ -1,118 +1,115 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import notifee, {
+  TimestampTrigger,
+  TriggerType,
+  EventType,
+} from '@notifee/react-native';
+import React, {useEffect, useState} from 'react';
+import {SafeAreaView, Button, View, Alert} from 'react-native';
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+function NotificationScreen() {
+  async function createScheduledNotification() {
+    const currentDate = new Date();
+    const futureDate = new Date(currentDate.getTime() + 10000); // Adding 10 seconds (10,000 milliseconds)
+    const trigger: TimestampTrigger = {
+      type: TriggerType.TIMESTAMP,
+      timestamp: futureDate.getTime(), // fire after 10 seconds
+    };
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+    try {
+      await notifee.createTriggerNotification(
+        {
+          title: 'Meeting with Jane',
+          body: 'Today at 11:20am',
+          android: {
+            channelId: 'your-channel-id',
+          },
+          ios: {
+            sound: 'chime.aiff',
+          },
+        },
+        trigger,
+      );
+    } catch (error) {
+      Alert.alert(`${error}`);
+    }
+  }
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+    <View>
+      <Button
+        title="Display Notification"
+        onPress={() => createScheduledNotification()}
+      />
     </View>
   );
 }
 
 function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  const [loading, setLoading] = useState(true);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+  async function initializeApp() {
+    try {
+      const initialNotification = await notifee.getInitialNotification();
+      if (initialNotification) {
+        console.log(
+          'Notification caused application to open',
+          initialNotification.notification,
+        );
+        console.log(
+          'Press action used to open the app',
+          initialNotification.pressAction,
+        );
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Error initializing app:', error);
+    }
+  }
+
+  useEffect(() => {
+    initializeApp();
+  }, []);
+
+  useEffect(() => {
+    return notifee.onForegroundEvent(({type, detail}) => {
+      handleNotificationEvent(type, detail);
+    });
+  }, []);
+
+  useEffect(() => {
+    return notifee.onBackgroundEvent(async ({type, detail}) => {
+      handleNotificationEvent(type, detail);
+    });
+  }, []);
+
+  function handleNotificationEvent(type: EventType, detail: any) {
+    switch (type) {
+      case EventType.DISMISSED:
+        console.log('User dismissed notification', detail.notification);
+        Alert.alert(
+          'User dismissed notification',
+          detail.notification?.body ?? '',
+        );
+        break;
+      case EventType.PRESS:
+        console.log('User pressed notification', detail.notification);
+        Alert.alert(
+          'User pressed notification',
+          detail.notification?.body ?? '',
+        );
+        break;
+    }
+  }
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+    <SafeAreaView>
+      {loading ? (
+        <View style={{backgroundColor: 'red'}} />
+      ) : (
+        <NotificationScreen />
+      )}
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
 
 export default App;
