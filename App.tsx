@@ -3,10 +3,10 @@ import notifee, {
   TriggerType,
   EventType,
 } from '@notifee/react-native';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect} from 'react';
 import {SafeAreaView, Button, View, Alert} from 'react-native';
 
-function NotificationScreen() {
+function App(): React.JSX.Element {
   async function createScheduledNotification() {
     const currentDate = new Date();
     const futureDate = new Date(currentDate.getTime() + 10000); // Adding 10 seconds (10,000 milliseconds)
@@ -34,20 +34,14 @@ function NotificationScreen() {
     }
   }
 
-  return (
-    <View>
-      <Button
-        title="Display Notification"
-        onPress={() => createScheduledNotification()}
-      />
-    </View>
-  );
-}
-
-function App(): React.JSX.Element {
-  const [loading, setLoading] = useState(true);
-
   async function initializeApp() {
+    // Request permissions (required for iOS)
+    try {
+      await notifee.requestPermission();
+    } catch (error) {
+      Alert.alert(`${error}`);
+    }
+
     try {
       const initialNotification = await notifee.getInitialNotification();
       if (initialNotification) {
@@ -60,8 +54,8 @@ function App(): React.JSX.Element {
           initialNotification.pressAction,
         );
       }
-      setLoading(false);
     } catch (error) {
+      Alert.alert(`${error}`);
       console.error('Error initializing app:', error);
     }
   }
@@ -103,11 +97,12 @@ function App(): React.JSX.Element {
 
   return (
     <SafeAreaView>
-      {loading ? (
-        <View style={{backgroundColor: 'red'}} />
-      ) : (
-        <NotificationScreen />
-      )}
+      <View style={{margin: 50}}>
+        <Button
+          title="Display Notification"
+          onPress={() => createScheduledNotification()}
+        />
+      </View>
     </SafeAreaView>
   );
 }
